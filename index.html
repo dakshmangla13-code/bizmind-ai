@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="BizMind AI — a browser-based business intelligence and sales analytics prototype." />
+  <title>BizMind AI | Business Intelligence</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    :root {
+      --navy: #172554;
+      --navy-2: #243b70;
+      --ink: #172033;
+      --muted: #68758b;
+      --line: #e6ebf2;
+      --surface: #ffffff;
+      --page: #f4f7fb;
+      --blue: #4776e6;
+      --blue-soft: #edf3ff;
+      --teal: #159b83;
+      --teal-soft: #e9f8f4;
+      --amber: #c78421;
+      --amber-soft: #fff6e7;
+      --red: #c64c58;
+      --red-soft: #fff0f1;
+      --shadow: 0 10px 30px rgba(24, 43, 77, .055);
+      --radius: 17px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--page); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .app-shell { min-height: 100vh; }
+    .topbar { height: 76px; background: rgba(255,255,255,.94); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 34px; position: sticky; top: 0; z-index: 20; backdrop-filter: blur(12px); }
+    .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--ink); }
+    .brand-mark { width: 39px; height: 39px; border-radius: 12px; background: linear-gradient(145deg, #28447f, #4776e6); color: white; display: grid; place-items: center; font-weight: 800; letter-spacing: -.05em; box-shadow: 0 6px 14px rgba(71,118,230,.25); }
+    .brand-name { font-weight: 800; letter-spacing: -.035em; font-size: 18px; }
+    .brand-sub { color: var(--muted); font-size: 11px; margin-top: 2px; }
+    .top-actions { display: flex; align-items: center; gap: 12px; }
+    .local-pill { display: inline-flex; align-items: center; gap: 7px; padding: 8px 11px; border-radius: 999px; color: #167a69; background: var(--teal-soft); font-size: 12px; font-weight: 700; }
+    .local-dot { width: 7px; height: 7px; border-radius: 50%; background: #19a589; }
+    .layout { display: grid; grid-template-columns: 235px minmax(0,1fr); max-width: 1600px; margin: 0 auto; }
+    .sidebar { padding: 28px 17px; border-right: 1px solid var(--line); min-height: calc(100vh - 76px); background: #fbfcfe; }
+    .nav-label { color: #9aa5b6; font-size: 10px; font-weight: 800; letter-spacing: .13em; padding: 9px 12px 12px; }
+    .nav-link { display: flex; align-items: center; gap: 12px; color: #637087; text-decoration: none; font-weight: 650; font-size: 13px; padding: 12px; border-radius: 11px; margin: 3px 0; }
+    .nav-link:hover, .nav-link.active { color: var(--navy); background: #edf2fb; }
+    .nav-link.disabled { opacity: .4; pointer-events: none; cursor: not-allowed; }
+    .nav-icon { width: 21px; text-align: center; font-size: 16px; }
+    .sidebar-note { margin: 36px 5px 0; padding: 14px; border: 1px solid var(--line); background: white; border-radius: 13px; color: var(--muted); font-size: 11px; line-height: 1.55; }
+    .sidebar-note strong { display: block; color: #33415b; margin-bottom: 5px; font-size: 12px; }
+    main { padding: 31px 36px 60px; min-width: 0; }
+    .page-heading { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; margin-bottom: 25px; }
+    .eyebrow { color: var(--blue); font-weight: 800; font-size: 10px; letter-spacing: .15em; text-transform: uppercase; margin-bottom: 8px; }
+    h1 { margin: 0; color: var(--navy); letter-spacing: -.045em; font-size: clamp(25px, 3vw, 34px); }
+    .page-heading p { color: var(--muted); margin: 8px 0 0; font-size: 13px; }
+    .button { border: 0; border-radius: 10px; padding: 11px 15px; font-weight: 750; font-size: 12px; transition: .18s ease; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+    .button-primary { background: var(--navy); color: #fff; box-shadow: 0 5px 12px rgba(23,37,84,.14); }
+    .button-primary:hover { background: #243b70; transform: translateY(-1px); }
+    .button-secondary { background: white; color: #34425c; border: 1px solid var(--line); }
+    .button-secondary:hover { background: #f7f9fc; }
+    .button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .hero-strip { background: linear-gradient(112deg, #172554 0%, #263f78 62%, #365b9e 100%); color: white; border-radius: 18px; padding: 23px 25px; display: flex; align-items: center; justify-content: space-between; gap: 18px; box-shadow: var(--shadow); margin-bottom: 22px; overflow: hidden; position: relative; }
+    .hero-strip:after { content: ""; width: 230px; height: 230px; border: 1px solid rgba(255,255,255,.13); border-radius: 50%; position: absolute; right: 8%; top: -145px; box-shadow: 0 0 0 25px rgba(255,255,255,.035), 0 0 0 55px rgba(255,255,255,.025); }
+    .hero-strip h2 { margin: 0; font-size: 17px; letter-spacing: -.02em; position: relative; z-index: 1; }
+    .hero-strip p { margin: 7px 0 0; color: #d9e4ff; font-size: 12px; position: relative; z-index: 1; }
+    .hero-meta { position: relative; z-index: 1; text-align: right; font-size: 11px; color: #d9e4ff; line-height: 1.7; }
+    .section { margin-top: 28px; scroll-margin-top: 95px; }
+    .section-head { display: flex; justify-content: space-between; align-items: end; gap: 12px; margin-bottom: 14px; }
+    .section-head h2 { margin: 0; font-size: 16px; color: var(--navy); letter-spacing: -.025em; }
+    .section-head p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+    .grid { display: grid; gap: 14px; }
+    .kpi-grid { grid-template-columns: repeat(4, minmax(0,1fr)); }
+    .kpi-card, .panel, .chart-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+    .kpi-card { padding: 17px 18px; min-height: 115px; }
+    .kpi-top { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 11px; font-weight: 700; }
+    .kpi-symbol { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 9px; background: var(--blue-soft); color: var(--blue); font-size: 15px; }
+    .kpi-value { font-size: 24px; letter-spacing: -.045em; color: var(--navy); font-weight: 800; margin-top: 12px; }
+    .kpi-foot { margin-top: 5px; color: #929db0; font-size: 10px; }
+    .two-col { grid-template-columns: minmax(0,1.15fr) minmax(300px,.85fr); }
+    .panel { padding: 20px; }
+    .panel-title { color: var(--navy); font-weight: 800; font-size: 14px; margin: 0; }
+    .panel-subtitle { color: var(--muted); font-size: 11px; margin: 5px 0 17px; }
+    .field-label { display: block; color: #3d4a61; font-size: 11px; font-weight: 750; margin-bottom: 7px; }
+    textarea, input[type="number"], input[type="text"] { width: 100%; border: 1px solid #dce3ed; border-radius: 10px; background: #fbfcfe; color: #26344d; outline: none; padding: 11px 12px; font-size: 12px; transition: border .15s, box-shadow .15s; }
+    textarea { min-height: 150px; resize: vertical; line-height: 1.6; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    textarea:focus, input:focus { border-color: #83a4f0; box-shadow: 0 0 0 3px rgba(71,118,230,.1); }
+    .field-help { color: #8793a7; font-size: 10px; line-height: 1.5; margin-top: 7px; }
+    .product-rows { display: grid; gap: 10px; }
+    .product-row { display: grid; grid-template-columns: minmax(130px,1.35fr) minmax(75px,.7fr) minmax(105px,1fr) minmax(105px,1fr) 38px; gap: 9px; align-items: end; padding: 12px; border: 1px solid #e7edf5; border-radius: 12px; background: #fbfcff; }
+    .sales-rows { display: grid; gap: 10px; }
+    .sales-row { display: grid; grid-template-columns: minmax(150px,1.1fr) minmax(130px,1fr) 38px; gap: 9px; align-items: end; padding: 12px; border: 1px solid #e7edf5; border-radius: 12px; background: #fbfcff; }
+    .product-field { min-width: 0; }
+    .product-field label { display: block; color: #56647b; font-size: 10px; font-weight: 750; margin-bottom: 6px; }
+    .product-field input { width: 100%; min-width: 0; padding: 10px 9px; font-size: 12px; }
+    .remove-product-btn { width: 36px; height: 38px; border: 1px solid #f0dadd; border-radius: 9px; background: #fff6f6; color: #b64b56; font-size: 18px; line-height: 1; }
+    .remove-product-btn:hover { background: #ffeded; }
+    .product-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .product-count { color: var(--muted); font-size: 10px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; margin-top: 15px; }
+    .upload-zone { border: 1.5px dashed #bdcbe2; border-radius: 12px; background: #f8faff; text-align: center; padding: 21px 12px; margin-top: 12px; }
+    .upload-zone input { max-width: 100%; font-size: 11px; color: var(--muted); }
+    .upload-icon { font-size: 22px; margin-bottom: 7px; }
+    .upload-zone strong { display: block; font-size: 12px; color: #3a4a69; }
+    .upload-zone span { color: #8a96a9; font-size: 10px; display: block; margin: 5px 0 11px; }
+    .action-row { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; margin-top: 17px; }
+    .status { font-size: 11px; color: var(--muted); }
+    .status.success { color: #16836e; }
+    .status.error { color: #b6404c; }
+    .chart-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .chart-card { padding: 16px 17px 13px; min-width: 0; }
+    .chart-title { font-size: 12px; font-weight: 800; color: #263650; margin-bottom: 3px; }
+    .chart-note { font-size: 10px; color: #8994a7; margin-bottom: 8px; }
+    .chart-wrap { height: 245px; position: relative; }
+    .chart-wrap.tall { height: 275px; }
+    .table-wrap { width: 100%; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 540px; }
+    th { color: #77839a; text-align: left; font-size: 10px; font-weight: 800; letter-spacing: .03em; background: #f7f9fc; padding: 11px 12px; }
+    td { color: #3c4960; padding: 12px; border-top: 1px solid #edf0f5; }
+    td strong { color: #233451; }
+    .recommendation-list { display: grid; gap: 9px; }
+    .recommendation { display: flex; gap: 10px; align-items: flex-start; padding: 11px 12px; border-radius: 11px; background: #f8faff; border: 1px solid #edf1f7; font-size: 11px; color: #4e5b71; line-height: 1.5; }
+    .recommendation .bullet { flex: 0 0 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; background: var(--blue-soft); color: var(--blue); font-size: 11px; font-weight: 800; }
+    .trend-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 11px; }
+    .trend-stat { padding: 15px; border-radius: 12px; background: #f8faff; border: 1px solid #eaf0f8; }
+    .trend-stat span { color: var(--muted); font-size: 10px; display: block; }
+    .trend-stat strong { display: block; color: var(--navy); font-size: 18px; margin-top: 7px; }
+    .trend-badge { display: inline-flex; border-radius: 999px; font-size: 10px; font-weight: 800; letter-spacing: .04em; padding: 6px 9px; background: var(--teal-soft); color: #167c68; }
+    .trend-badge.falling { color: #b53f4b; background: var(--red-soft); }
+    .trend-badge.stable { color: #9a681c; background: var(--amber-soft); }
+    .empty-state { color: #8a96a9; font-size: 11px; text-align: center; padding: 36px 12px; }
+    .footer { text-align: center; color: #9aa4b5; font-size: 10px; padding: 35px 0 10px; }
+    .notice { border: 1px solid #f1dfb9; background: #fff9ed; color: #836126; border-radius: 11px; padding: 11px 13px; font-size: 10px; line-height: 1.55; margin-top: 15px; }
+    .hide { display: none !important; }
+    @media (max-width: 1050px) { .kpi-grid { grid-template-columns: repeat(2,1fr); } .layout { grid-template-columns: 190px minmax(0,1fr); } main { padding: 27px 24px 50px; } }
+    @media (max-width: 760px) { .topbar { padding: 0 16px; height: 66px; } .layout { display: block; } .sidebar { min-height: 0; padding: 8px 12px; border-right: 0; border-bottom: 1px solid var(--line); display: flex; overflow-x: auto; gap: 5px; } .nav-label, .sidebar-note { display: none; } .nav-link { flex: 0 0 auto; padding: 10px 11px; font-size: 11px; } main { padding: 23px 15px 45px; } .page-heading { display: block; } .page-heading .button { margin-top: 14px; } .hero-strip { display: block; padding: 19px; } .hero-meta { text-align: left; margin-top: 12px; } .kpi-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; } .kpi-card { padding: 13px; min-height: 105px; } .kpi-value { font-size: 20px; } .two-col, .chart-grid { grid-template-columns: 1fr; } .form-row, .trend-row { grid-template-columns: 1fr; } .product-row, .sales-row { position: relative; grid-template-columns: repeat(2,minmax(0,1fr)); padding: 48px 58px 12px 12px; } .remove-product-btn { position: absolute; top: 10px; right: 10px; } .chart-wrap { height: 225px; } .local-pill { display: none; } }
+    @media (max-width: 380px) { .kpi-grid { grid-template-columns: 1fr 1fr; } .kpi-value { font-size: 18px; } .brand-sub { display: none; } }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar">
+    <a class="brand" href="#data-input" aria-label="BizMind AI home">
+      <div class="brand-mark">B</div>
+      <div><div class="brand-name">BizMind AI</div><div class="brand-sub">Business Intelligence Workspace</div></div>
+    </a>
+    <div class="top-actions">
+      <span class="local-pill"><span class="local-dot"></span> Runs in your browser</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="nav-label">WORKSPACE</div>
+      <a class="nav-link active" href="#data-input"><span class="nav-icon">▤</span> Business data</a>
+      <a class="nav-link disabled" aria-disabled="true" href="#products"><span class="nav-icon">▦</span> Product analysis</a>
+      <a class="nav-link disabled" aria-disabled="true" href="#sales-intelligence"><span class="nav-icon">↗</span> Sales intelligence</a>
+      <a class="nav-link disabled" aria-disabled="true" href="#reports"><span class="nav-icon">▧</span> Reports</a>
+      <div class="sidebar-note"><strong>Prototype edition</strong>Analytics and forecasting are rule-based calculations. Your entries are processed locally in this browser and are not sent to a BizMind server.</div>
+    </aside>
+
+    <main>
+      <div class="page-heading">
+        <div><div class="eyebrow">START HERE / BUSINESS DATA</div><h1>Enter your business data.</h1><p>Add your product details and monthly sales first. Your analysis will appear after you submit the information.</p></div>
+      </div>
+
+      <section class="section" id="data-input">
+        <div class="section-head"><div><h2>Business data</h2><p>Enter product figures manually or import an Excel workbook.</p></div></div>
+        <div class="grid two-col">
+          <div class="panel">
+            <h3 class="panel-title">Product information</h3>
+            <p class="panel-subtitle">Enter each product in its own set of fields. Add another row for every additional product.</p>
+            <div id="productRows" class="product-rows" aria-label="Product entry rows"></div>
+            <div class="product-actions">
+              <button class="button button-secondary" id="addProductBtn" type="button">＋ Add product</button>
+              <span class="product-count" id="productCount" aria-live="polite">1 empty product row</span>
+            </div>
+            <div class="field-help">Fill in product name, units sold, selling price per unit and cost price per unit. Remove any unused row with the × button.</div>
+            <div class="upload-zone">
+              <div class="upload-icon">⇧</div><strong>Import an Excel workbook</strong><span>Accepted format: .xlsx or .xls · Required columns: product, units, selling_price, cost_price</span>
+              <input type="file" id="excelInput" accept=".xlsx,.xls" />
+              <div class="field-help" id="uploadStatus">Choose a workbook to load its rows into the product editor.</div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Monthly sales history</h3>
+            <p class="panel-subtitle">Enter at least four months to compare both forecasting methods.</p>
+            <label class="field-label">Monthly sales entries</label>
+            <div id="salesRows" class="sales-rows" aria-label="Monthly sales entry rows"></div>
+            <div class="product-actions">
+              <button class="button button-secondary" id="addMonthBtn" type="button">＋ Add month</button>
+              <span class="product-count" id="monthCount" aria-live="polite">1 empty month row</span>
+            </div>
+            <div class="field-help">Enter each month and its revenue in a separate row. Add at least four months in chronological order, oldest first.</div>
+            <div class="form-row">
+              <div><label class="field-label" for="expensesInput">Other expenses (₹)</label><input type="number" id="expensesInput" min="0" step="0.01" placeholder="Enter expenses" /></div>
+              <div><label class="field-label" for="currencyInput">Currency</label><input type="text" id="currencyInput" value="INR (₹)" readonly /></div>
+            </div>
+            <div class="action-row"><button class="button button-primary" id="analyzeBtn">✦ Generate business analysis</button><button class="button button-secondary" id="resetBtn">Clear all data</button><span class="status" id="inputStatus" aria-live="polite">Enter your business data to begin.</span></div>
+            <div class="notice">This is a learning prototype. Do not enter confidential customer information or sensitive company data. Imported spreadsheet contents are read in this browser.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section hide" id="financialSnapshot" aria-label="Financial summary">
+        <div class="section-head"><div><h2>Financial snapshot</h2><p>Key figures from the business data you submitted.</p></div><span class="status" id="analysisStatus">No analysis yet</span></div>
+        <div class="grid kpi-grid">
+          <div class="kpi-card"><div class="kpi-top"><span>Total revenue</span><span class="kpi-symbol">₹</span></div><div class="kpi-value" id="kpiRevenue">—</div><div class="kpi-foot">Sales value across products</div></div>
+          <div class="kpi-card"><div class="kpi-top"><span>Gross profit</span><span class="kpi-symbol">↗</span></div><div class="kpi-value" id="kpiGross">—</div><div class="kpi-foot">Revenue less product costs</div></div>
+          <div class="kpi-card"><div class="kpi-top"><span>Net profit</span><span class="kpi-symbol">✓</span></div><div class="kpi-value" id="kpiNet">—</div><div class="kpi-foot">After other business expenses</div></div>
+          <div class="kpi-card"><div class="kpi-top"><span>Net profit margin</span><span class="kpi-symbol">%</span></div><div class="kpi-value" id="kpiMargin">—</div><div class="kpi-foot">Net profit as a share of revenue</div></div>
+        </div>
+      </section>
+
+      <section class="section hide" id="products">
+        <div class="section-head"><div><h2>Product performance</h2><p>Compare revenue, profit and product-level margins.</p></div></div>
+        <div class="panel">
+          <div class="panel-title" style="margin-bottom:13px">Product breakdown</div>
+          <div class="table-wrap"><table><thead><tr><th>PRODUCT</th><th>UNITS</th><th>REVENUE</th><th>GROSS PROFIT</th><th>PROFIT MARGIN</th></tr></thead><tbody id="productTable"><tr><td colspan="5" class="empty-state">Enter business data above to see product details.</td></tr></tbody></table></div>
+        </div>
+        <div class="grid chart-grid" style="margin-top:14px">
+          <div class="chart-card"><div class="chart-title">Revenue by product</div><div class="chart-note">Sales value generated by each product</div><div class="chart-wrap"><canvas id="revenueChart"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">Gross profit by product</div><div class="chart-note">Product revenue less product costs</div><div class="chart-wrap"><canvas id="profitChart"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">Revenue versus profit</div><div class="chart-note">Side-by-side comparison for each product</div><div class="chart-wrap"><canvas id="comparisonChart"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">Product profit margin</div><div class="chart-note">Dashed line shows a 20% reference level</div><div class="chart-wrap"><canvas id="marginChart"></canvas></div></div>
+        </div>
+      </section>
+
+      <section class="section hide" id="sales-intelligence">
+        <div class="section-head"><div><h2>Sales intelligence</h2><p>Monthly growth, historical direction and a baseline next-month estimate.</p></div><span id="trendBadge" class="trend-badge stable">Not analysed</span></div>
+        <div class="grid trend-row" style="margin-bottom:14px">
+          <div class="trend-stat"><span>Estimated next-month revenue</span><strong id="forecastValue">—</strong></div>
+          <div class="trend-stat"><span>Best backtested method</span><strong id="bestMethod" style="font-size:14px">—</strong></div>
+          <div class="trend-stat"><span>Average error of selected method</span><strong id="bestError">—</strong></div>
+        </div>
+        <div class="grid chart-grid">
+          <div class="chart-card"><div class="chart-title">Historical sales and forecast</div><div class="chart-note">Dotted line shows the fitted historical trend; dashed segment shows the selected estimate.</div><div class="chart-wrap tall"><canvas id="forecastChart"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">Forecast method comparison</div><div class="chart-note">Lower average percentage error was better on this backtest sample.</div><div class="chart-wrap tall"><canvas id="accuracyChart"></canvas></div></div>
+        </div>
+        <div class="panel" style="margin-top:14px">
+          <div class="panel-title" style="margin-bottom:12px">Month-by-month sales growth</div>
+          <div class="table-wrap"><table><thead><tr><th>MONTH</th><th>ACTUAL REVENUE</th><th>CHANGE FROM PREVIOUS MONTH</th></tr></thead><tbody id="growthTable"><tr><td colspan="3" class="empty-state">Monthly growth will appear after analysis.</td></tr></tbody></table></div>
+        </div>
+      </section>
+
+      <section class="section hide" id="reports">
+        <div class="section-head"><div><h2>Business recommendations & reports</h2><p>Rule-based suggestions generated from the figures you entered.</p></div><button class="button button-primary" id="pdfBtn" disabled>↓ Download PDF report</button></div>
+        <div class="grid two-col">
+          <div class="panel"><h3 class="panel-title">Business recommendations</h3><p class="panel-subtitle">These are programmed checks, not generative AI advice.</p><div class="recommendation-list" id="recommendations"><div class="empty-state">Recommendations will appear after you submit business data.</div></div></div>
+          <div class="panel"><h3 class="panel-title">Report contents</h3><p class="panel-subtitle">Your downloadable report includes:</p><div class="recommendation-list"><div class="recommendation"><span class="bullet">1</span><span>Financial overview and product performance table.</span></div><div class="recommendation"><span class="bullet">2</span><span>Four product analytics charts.</span></div><div class="recommendation"><span class="bullet">3</span><span>Historical sales, trend, forecast and method comparison.</span></div></div><div class="notice">PDF creation happens in your browser. The report is generated from the latest analysis on this page.</div></div>
+        </div>
+      </section>
+
+      <div class="footer">BizMind AI · Educational prototype · Browser-based calculations · No account or API key required</div>
+    </main>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const chartInstances = {};
+  let latestAnalysis = null;
+
+  const $ = (id) => document.getElementById(id);
+  const money = (value) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
+  const number = (value, digits = 2) => new Intl.NumberFormat("en-IN", { maximumFractionDigits: digits }).format(value);
+  const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+
+  function setStatus(message, type = "") {
+    const el = $("inputStatus");
+    el.textContent = message;
+    el.className = "status" + (type ? " " + type : "");
+  }
+
+  function addProductRow(product = {}) {
+    const row = document.createElement("div");
+    row.className = "product-row";
+
+    const fields = [
+      { key: "name", label: "Product name", type: "text", placeholder: "e.g. Shoes" },
+      { key: "units", label: "Units", type: "number", placeholder: "e.g. 10", min: "0", step: "any" },
+      { key: "price", label: "Selling price (₹)", type: "number", placeholder: "e.g. 1000", min: "0", step: "any" },
+      { key: "cost", label: "Cost price (₹)", type: "number", placeholder: "e.g. 600", min: "0", step: "any" }
+    ];
+
+    fields.forEach(field => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "product-field";
+      const label = document.createElement("label");
+      label.textContent = field.label;
+      const input = document.createElement("input");
+      input.type = field.type;
+      input.dataset.field = field.key;
+      input.placeholder = field.placeholder;
+      if (field.min !== undefined) input.min = field.min;
+      if (field.step !== undefined) input.step = field.step;
+      input.value = product[field.key] ?? "";
+      if (field.key === "name") input.autocomplete = "off";
+      wrapper.append(label, input);
+      row.appendChild(wrapper);
+    });
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "remove-product-btn";
+    remove.textContent = "×";
+    remove.setAttribute("aria-label", "Remove this product");
+    remove.title = "Remove product";
+    remove.addEventListener("click", () => {
+      const rows = $("productRows").querySelectorAll(".product-row");
+      if (rows.length === 1) {
+        row.querySelectorAll("input").forEach(input => input.value = "");
+      } else {
+        row.remove();
+      }
+      updateProductCount();
+    });
+    row.appendChild(remove);
+    $("productRows").appendChild(row);
+    updateProductCount();
+  }
+
+  function updateProductCount() {
+    const rows = [...$("productRows").querySelectorAll(".product-row")];
+    const completed = rows.filter(row => [...row.querySelectorAll("input")].some(input => input.value.trim()));
+    $("productCount").textContent = `${rows.length} product row${rows.length === 1 ? "" : "s"} · ${completed.length} with entered data`;
+  }
+
+  function setProductRows(products) {
+    $("productRows").innerHTML = "";
+    if (products.length) products.forEach(product => addProductRow(product));
+    else addProductRow();
+    updateProductCount();
+  }
+
+  function parseProducts() {
+    const rows = [...$("productRows").querySelectorAll(".product-row")];
+    const products = [];
+
+    rows.forEach((row, index) => {
+      const name = row.querySelector('[data-field="name"]').value.trim();
+      const unitsText = row.querySelector('[data-field="units"]').value.trim();
+      const priceText = row.querySelector('[data-field="price"]').value.trim();
+      const costText = row.querySelector('[data-field="cost"]').value.trim();
+      const values = [name, unitsText, priceText, costText];
+
+      if (values.every(value => value === "")) return;
+      if (values.some(value => value === "")) {
+        throw new Error(`Product row ${index + 1}: complete all four fields or remove the empty row.`);
+      }
+
+      const units = Number(unitsText);
+      const price = Number(priceText);
+      const cost = Number(costText);
+
+      if (![units, price, cost].every(value => Number.isFinite(value) && value >= 0)) {
+        throw new Error(`Product row ${index + 1}: units and prices must be valid non-negative numbers.`);
+      }
+
+      products.push({
+        name, units, price, cost,
+        revenue: units * price,
+        profit: units * (price - cost)
+      });
+    });
+
+    if (!products.length) throw new Error("Add at least one product and fill in its details.");
+    return products;
+  }
+
+  function addSalesRow(sale = {}) {
+    const row = document.createElement("div");
+    row.className = "sales-row";
+
+    const fields = [
+      { key: "month", label: "Month", type: "text", placeholder: "e.g. January" },
+      { key: "revenue", label: "Revenue (₹)", type: "number", placeholder: "e.g. 12000", min: "0", step: "any" }
+    ];
+
+    fields.forEach(field => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "product-field";
+      const label = document.createElement("label");
+      label.textContent = field.label;
+      const input = document.createElement("input");
+      input.type = field.type;
+      input.dataset.field = field.key;
+      input.placeholder = field.placeholder;
+      if (field.min !== undefined) input.min = field.min;
+      if (field.step !== undefined) input.step = field.step;
+      input.value = sale[field.key] ?? "";
+      if (field.key === "month") input.autocomplete = "off";
+      wrapper.append(label, input);
+      row.appendChild(wrapper);
+    });
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "remove-product-btn";
+    remove.textContent = "×";
+    remove.setAttribute("aria-label", "Remove this month");
+    remove.title = "Remove month";
+    remove.addEventListener("click", () => {
+      const rows = $("salesRows").querySelectorAll(".sales-row");
+      if (rows.length === 1) {
+        row.querySelectorAll("input").forEach(input => input.value = "");
+      } else {
+        row.remove();
+      }
+      updateMonthCount();
+    });
+
+    row.appendChild(remove);
+    $("salesRows").appendChild(row);
+    updateMonthCount();
+  }
+
+  function updateMonthCount() {
+    const rows = [...$("salesRows").querySelectorAll(".sales-row")];
+    const completed = rows.filter(row => [...row.querySelectorAll("input")].every(input => input.value.trim()));
+    $("monthCount").textContent = `${rows.length} month row${rows.length === 1 ? "" : "s"} · ${completed.length} complete`;
+  }
+
+  function setSalesRows(salesRows) {
+    $("salesRows").innerHTML = "";
+    if (salesRows.length) salesRows.forEach(sale => addSalesRow(sale));
+    else addSalesRow();
+    updateMonthCount();
+  }
+
+  function parseSales() {
+    const rows = [...$("salesRows").querySelectorAll(".sales-row")];
+    const months = [], sales = [];
+
+    rows.forEach((row, index) => {
+      const month = row.querySelector('[data-field="month"]').value.trim();
+      const revenueText = row.querySelector('[data-field="revenue"]').value.trim();
+
+      if (month === "" && revenueText === "") return;
+      if (month === "" || revenueText === "") {
+        throw new Error(`Month row ${index + 1}: complete both the month and revenue fields or remove the empty row.`);
+      }
+
+      const value = Number(revenueText);
+      if (months.some(m => m.toLowerCase() === month.toLowerCase())) {
+        throw new Error(`Month row ${index + 1}: repeated month name.`);
+      }
+      if (!Number.isFinite(value) || value < 0) {
+        throw new Error(`Month row ${index + 1}: revenue must be a valid non-negative number.`);
+      }
+
+      months.push(month);
+      sales.push(value);
+    });
+
+    if (months.length < 4) {
+      throw new Error("Enter at least four complete months of sales history to compare forecasting methods.");
+    }
+
+    return { months, sales };
+  }
+
+  function linearFit(values) {
+    const n = values.length;
+    const xs = values.map((_, i) => i);
+    const meanX = xs.reduce((a,b) => a+b, 0) / n;
+    const meanY = values.reduce((a,b) => a+b, 0) / n;
+    let numerator = 0, denominator = 0;
+    xs.forEach((x, i) => { numerator += (x - meanX) * (values[i] - meanY); denominator += (x - meanX) ** 2; });
+    const slope = denominator ? numerator / denominator : 0;
+    const intercept = meanY - slope * meanX;
+    return { slope, values: xs.map(x => intercept + slope * x) };
+  }
+
+  function computeAnalysis() {
+    const products = parseProducts();
+    const { months, sales } = parseSales();
+    const expenses = Number($("expensesInput").value || 0);
+    if (!Number.isFinite(expenses) || expenses < 0) throw new Error("Other expenses must be a valid non-negative number.");
+
+    const revenue = products.reduce((sum, p) => sum + p.revenue, 0);
+    const grossProfit = products.reduce((sum, p) => sum + p.profit, 0);
+    const netProfit = grossProfit - expenses;
+    const netMargin = revenue > 0 ? netProfit / revenue * 100 : 0;
+    products.forEach(p => p.margin = p.revenue > 0 ? p.profit / p.revenue * 100 : 0);
+    const maxProfit = Math.max(...products.map(p => p.profit));
+    const bestProducts = products.filter(p => Math.abs(p.profit - maxProfit) < 1e-8).map(p => p.name);
+
+    const growth = sales.slice(1).map((current, i) => sales[i] === 0 ? null : (current - sales[i]) / sales[i] * 100);
+    const fit = linearFit(sales);
+    const tolerance = Math.max(Math.abs(sales.reduce((a,b)=>a+b,0) / sales.length) * 0.01, 0.01);
+    const trend = fit.slope > tolerance ? "RISING" : fit.slope < -tolerance ? "FALLING" : "STABLE";
+
+    const movingErrors = [], previousErrors = [];
+    for (let i = 3; i < sales.length; i++) {
+      const actual = sales[i];
+      if (actual > 0) {
+        const movingPrediction = (sales[i-1] + sales[i-2] + sales[i-3]) / 3;
+        const previousPrediction = sales[i-1];
+        movingErrors.push(Math.abs(actual - movingPrediction) / actual * 100);
+        previousErrors.push(Math.abs(actual - previousPrediction) / actual * 100);
+      }
+    }
+    const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0) / arr.length : null;
+    const movingError = avg(movingErrors), previousError = avg(previousErrors);
+    let selectedMethod, forecast, selectedError;
+    if (movingError === null) {
+      selectedMethod = "Three-month moving average"; forecast = avg(sales.slice(-3)); selectedError = null;
+    } else if (previousError === null || movingError <= previousError) {
+      selectedMethod = "Three-month moving average"; forecast = avg(sales.slice(-3)); selectedError = movingError;
+    } else {
+      selectedMethod = "Previous month's sales"; forecast = sales[sales.length - 1]; selectedError = previousError;
+    }
+
+    const recommendations = [];
+    if (netProfit < 0) recommendations.push("The business is making a loss after the entered expenses.");
+    else if (netMargin < 10) recommendations.push("The net profit margin is below 10%; review costs and pricing assumptions.");
+    else if (netMargin < 25) recommendations.push("The net profit margin is between 10% and 25%; monitor costs and product mix.");
+    else recommendations.push("The net profit margin is at least 25% on the figures entered.");
+    recommendations.push(`Highest individual product profit: ${bestProducts.join(", ")}.`);
+    const lowMargin = products.filter(p => p.revenue > 0 && p.margin < 20).map(p => p.name);
+    recommendations.push(lowMargin.length ? `Review the margins of: ${lowMargin.join(", ")}.` : "No product with revenue is below the 20% reference margin.");
+    recommendations.push(trend === "RISING" ? "Historical sales show a rising fitted linear trend." : trend === "FALLING" ? "Historical sales show a falling fitted linear trend; review possible causes." : "Historical sales are relatively stable under the fitted linear trend.");
+    recommendations.push(`The ${selectedMethod.toLowerCase()} had the lower average backtest percentage error on the entered data.`);
+
+    return { products, expenses, revenue, grossProfit, netProfit, netMargin, bestProducts, months, sales, growth, fit, trend, movingError, previousError, selectedMethod, forecast, selectedError, recommendations };
+  }
+
+  function destroyChart(id) { if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; } }
+  function makeChart(id, config) { destroyChart(id); const ctx = $(id); chartInstances[id] = new Chart(ctx, config); }
+  const baseOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { usePointStyle: true, boxWidth: 8, font: { size: 10 } } } }, scales: { x: { grid: { display: false }, ticks: { color: "#748198", font: { size: 10 } } }, y: { beginAtZero: true, grid: { color: "#edf1f6" }, ticks: { color: "#748198", font: { size: 10 } } } } };
+
+  function renderCharts(a) {
+    const labels = a.products.map(p => p.name);
+    const revenues = a.products.map(p => p.revenue);
+    const profits = a.products.map(p => p.profit);
+    const margins = a.products.map(p => p.margin);
+    const blue = "#4776e6", teal = "#159b83", amber = "#e5a23b", navy = "#243b70";
+    makeChart("revenueChart", { type: "bar", data: { labels, datasets: [{ label: "Revenue", data: revenues, backgroundColor: blue, borderRadius: 6, maxBarThickness: 45 }] }, options: baseOptions });
+    makeChart("profitChart", { type: "bar", data: { labels, datasets: [{ label: "Gross profit", data: profits, backgroundColor: teal, borderRadius: 6, maxBarThickness: 45 }] }, options: baseOptions });
+    makeChart("comparisonChart", { type: "bar", data: { labels, datasets: [{ label: "Revenue", data: revenues, backgroundColor: blue, borderRadius: 5 }, { label: "Gross profit", data: profits, backgroundColor: amber, borderRadius: 5 }] }, options: { ...baseOptions, scales: { ...baseOptions.scales, x: { ...baseOptions.scales.x }, y: { ...baseOptions.scales.y } } } });
+    makeChart("marginChart", { type: "bar", data: { labels, datasets: [{ label: "Profit margin", data: margins, backgroundColor: teal, borderRadius: 5 }, { type: "line", label: "20% reference", data: labels.map(() => 20), borderColor: amber, borderDash: [5,5], pointRadius: 0, borderWidth: 2 }] }, options: { ...baseOptions, scales: { ...baseOptions.scales, y: { ...baseOptions.scales.y, ticks: { callback: v => v + "%" } } } } });
+
+    const forecastLabels = [...a.months, "Next month"];
+    const forecastValues = [...a.sales, a.forecast];
+    const fitValues = [...a.fit.values, null];
+    const actualAndForecast = [...a.sales, a.forecast];
+    const selectedIndex = forecastLabels.length - 1;
+    makeChart("forecastChart", { type: "line", data: { labels: forecastLabels, datasets: [
+      { label: "Actual sales", data: [...a.sales, null], borderColor: blue, backgroundColor: blue, tension: .25, pointRadius: 4, spanGaps: false },
+      { label: "Historical trend", data: fitValues, borderColor: amber, borderDash: [3,4], pointRadius: 0, tension: 0 },
+      { label: "Selected forecast", data: [...a.sales.map(() => null), a.forecast], borderColor: teal, backgroundColor: teal, pointRadius: 6, showLine: false }
+    ] }, options: { ...baseOptions, scales: { ...baseOptions.scales, y: { ...baseOptions.scales.y, ticks: { callback: v => "₹" + number(v,0) } } } } });
+    const accuracyLabels = ["3-month average", "Previous month"];
+    const accuracyValues = [a.movingError, a.previousError];
+    makeChart("accuracyChart", { type: "bar", data: { labels: accuracyLabels, datasets: [{ label: "Average error (%)", data: accuracyValues, backgroundColor: [amber, teal], borderRadius: 6, maxBarThickness: 55 }] }, options: { ...baseOptions, scales: { ...baseOptions.scales, y: { ...baseOptions.scales.y, ticks: { callback: v => v + "%" } } } } });
+  }
+
+  function renderAnalysis(a) {
+    ["financialSnapshot", "products", "sales-intelligence", "reports"].forEach(id => $(id).classList.remove("hide"));
+    document.querySelectorAll('.nav-link[href="#products"], .nav-link[href="#sales-intelligence"], .nav-link[href="#reports"]').forEach(link => { link.classList.remove("disabled"); link.removeAttribute("aria-disabled"); });
+    $("pdfBtn").disabled = false;
+    $("kpiRevenue").textContent = money(a.revenue);
+    $("kpiGross").textContent = money(a.grossProfit);
+    $("kpiNet").textContent = money(a.netProfit);
+    $("kpiMargin").textContent = number(a.netMargin) + "%";
+    $("forecastValue").textContent = money(a.forecast);
+    $("bestMethod").textContent = a.selectedMethod === "Previous month's sales" ? "Previous month" : "3-month average";
+    $("bestError").textContent = a.selectedError === null ? "Not available" : number(a.selectedError) + "%";
+
+    const badge = $("trendBadge");
+    badge.textContent = a.trend;
+    badge.className = "trend-badge" + (a.trend === "FALLING" ? " falling" : a.trend === "STABLE" ? " stable" : "");
+
+    $("productTable").innerHTML = a.products.map(p => `<tr><td><strong>${escapeHtml(p.name)}</strong></td><td>${number(p.units, 2)}</td><td>${money(p.revenue)}</td><td>${money(p.profit)}</td><td>${number(p.margin)}%</td></tr>`).join("");
+    $("growthTable").innerHTML = a.months.map((month, i) => {
+      if (i === 0) return `<tr><td><strong>${escapeHtml(month)}</strong></td><td>${money(a.sales[i])}</td><td>—</td></tr>`;
+      const growth = a.growth[i-1];
+      const label = growth === null ? "Not available (previous sales were zero)" : `${growth >= 0 ? "+" : ""}${number(growth)}%`;
+      return `<tr><td><strong>${escapeHtml(month)}</strong></td><td>${money(a.sales[i])}</td><td style="color:${growth === null ? "#77839a" : growth >= 0 ? "#16836e" : "#bc4955"};font-weight:750">${label}</td></tr>`;
+    }).join("");
+    $("recommendations").innerHTML = a.recommendations.map((r, i) => `<div class="recommendation"><span class="bullet">${i+1}</span><span>${escapeHtml(r)}</span></div>`).join("");
+    renderCharts(a);
+    $("analysisStatus").textContent = "Analysis updated · " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    $("analysisStatus").className = "status success";
+    latestAnalysis = a;
+  }
+
+  function runAnalysis() {
+    try {
+      setStatus("Checking your business data…");
+      const analysis = computeAnalysis();
+      renderAnalysis(analysis);
+      setStatus("Analysis complete. Your results are ready below.", "success");
+    } catch (error) {
+      latestAnalysis = null;
+      $("pdfBtn").disabled = true;
+      setStatus(error.message || "Please check your entries.", "error");
+      $("analysisStatus").textContent = "Waiting for valid data";
+      $("analysisStatus").className = "status error";
+    }
+  }
+
+  async function importExcel(file) {
+    if (!file) return;
+    try {
+      if (!window.XLSX) throw new Error("Excel reader library did not load. Check your internet connection and refresh the page.");
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+      if (!rows.length) throw new Error("The selected worksheet is empty.");
+      const normalise = s => String(s).trim().toLowerCase().replace(/\s+/g, "_");
+      const headers = Object.keys(rows[0]).map(normalise);
+      const required = ["product", "units", "selling_price", "cost_price"];
+      const missing = required.filter(h => !headers.includes(h));
+      if (missing.length) throw new Error("Missing required columns: " + missing.join(", "));
+      const headerMap = {};
+      Object.keys(rows[0]).forEach(k => { headerMap[normalise(k)] = k; });
+      const importedProducts = rows.map(row => ({
+        name: String(row[headerMap.product] ?? "").trim(),
+        units: String(row[headerMap.units] ?? "").trim(),
+        price: String(row[headerMap.selling_price] ?? "").trim(),
+        cost: String(row[headerMap.cost_price] ?? "").trim()
+      }));
+      setProductRows(importedProducts);
+      $("uploadStatus").textContent = `${rows.length} product row(s) loaded into the product fields. Review them, then click Generate business analysis.`;
+      $("uploadStatus").style.color = "#16836e";
+      setStatus("Excel data imported. Review the product editor.", "success");
+    } catch (error) {
+      $("uploadStatus").textContent = error.message;
+      $("uploadStatus").style.color = "#b6404c";
+      setStatus(error.message, "error");
+    }
+  }
+
+  function downloadPDF() {
+    if (!latestAnalysis) { setStatus("Run an analysis before exporting the PDF.", "error"); return; }
+    if (!window.jspdf || !window.jspdf.jsPDF) { setStatus("PDF library did not load. Check your internet connection and refresh the page.", "error"); return; }
+    try {
+      const a = latestAnalysis;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const navy = [23, 37, 84];
+      const blue = [71, 118, 230];
+
+      // Page 1: financial report and product table
+      doc.setFillColor(...navy); doc.roundedRect(12, 12, pageWidth - 24, 29, 3, 3, "F");
+      doc.setTextColor(255,255,255); doc.setFont("helvetica", "bold"); doc.setFontSize(20); doc.text("BIZMIND AI", 19, 24);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.text("BUSINESS PERFORMANCE REPORT", 19, 33);
+      doc.text(new Date().toLocaleDateString("en-IN"), pageWidth - 18, 24, { align: "right" });
+      doc.setTextColor(...navy); doc.setFont("helvetica", "bold"); doc.setFontSize(13); doc.text("Financial overview", 14, 53);
+      const cards = [
+        ["Total revenue", money(a.revenue)], ["Gross profit", money(a.grossProfit)],
+        ["Net profit", money(a.netProfit)], ["Net margin", number(a.netMargin) + "%"]
+      ];
+      const cardW = (pageWidth - 34) / 2;
+      cards.forEach((c, i) => {
+        const x = 14 + (i % 2) * (cardW + 6);
+        const y = 59 + Math.floor(i / 2) * 23;
+        doc.setFillColor(245, 248, 253); doc.setDrawColor(225, 232, 242); doc.roundedRect(x, y, cardW, 18, 2, 2, "FD");
+        doc.setTextColor(105, 119, 142); doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.text(c[0].toUpperCase(), x+4, y+6);
+        doc.setTextColor(...navy); doc.setFontSize(12); doc.text(c[1], x+4, y+13.5);
+      });
+      doc.setTextColor(...navy); doc.setFontSize(13); doc.text("Product performance", 14, 111);
+      doc.autoTable({ startY: 116, head: [["Product", "Units", "Revenue", "Gross profit", "Margin"]], body: a.products.map(p => [p.name, number(p.units), money(p.revenue), money(p.profit), number(p.margin) + "%"]), theme: "grid", headStyles: { fillColor: navy }, styles: { fontSize: 8, cellPadding: 3 }, margin: { left: 14, right: 14 } });
+      let y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : 145) + 12;
+      doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(...navy); doc.text("Business recommendations", 14, y); y += 8;
+      doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(65, 77, 98);
+      a.recommendations.forEach((item, index) => {
+        const lines = doc.splitTextToSize(`${index + 1}. ${item}`, pageWidth - 30);
+        if (y + lines.length * 5 > 282) { doc.addPage(); y = 20; }
+        doc.text(lines, 16, y); y += lines.length * 5 + 2;
+      });
+
+      // Page 2: product charts
+      doc.addPage();
+      doc.setFont("helvetica", "bold"); doc.setFontSize(16); doc.setTextColor(...navy); doc.text("Product analytics dashboard", 14, 18);
+      const chartIds = ["revenueChart", "profitChart", "comparisonChart", "marginChart"];
+      const chartTitles = ["Revenue by product", "Gross profit by product", "Revenue versus profit", "Product profit margin"];
+      const positions = [[14, 27], [108, 27], [14, 151], [108, 151]];
+      chartIds.forEach((id, i) => {
+        const canvas = $(id);
+        if (!canvas) return;
+        const [x, y] = positions[i];
+        doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(55, 68, 91); doc.text(chartTitles[i], x, y);
+        const image = canvas.toDataURL("image/png", 1.0);
+        doc.addImage(image, "PNG", x, y + 4, 88, 91);
+      });
+
+      // Page 3: sales intelligence
+      doc.addPage();
+      doc.setFont("helvetica", "bold"); doc.setFontSize(16); doc.setTextColor(...navy); doc.text("Sales intelligence", 14, 18);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(58, 72, 96);
+      doc.text(`Historical direction: ${a.trend}`, 14, 31);
+      doc.text(`Selected forecast method: ${a.selectedMethod}`, 14, 38);
+      doc.text(`Estimated next-month revenue: ${money(a.forecast)}`, 14, 45);
+      doc.text(`3-month moving-average backtest error: ${a.movingError === null ? "Not available" : number(a.movingError) + "%"}`, 14, 52);
+      doc.text(`Previous-month backtest error: ${a.previousError === null ? "Not available" : number(a.previousError) + "%"}`, 14, 59);
+      const salesCanvas = $("forecastChart");
+      const errorCanvas = $("accuracyChart");
+      if (salesCanvas) doc.addImage(salesCanvas.toDataURL("image/png", 1), "PNG", 12, 68, 186, 83);
+      if (errorCanvas) doc.addImage(errorCanvas.toDataURL("image/png", 1), "PNG", 12, 157, 186, 83);
+      doc.setFontSize(8); doc.setTextColor(110, 120, 137);
+      doc.text("Forecasts and trend indicators are estimates based on the entered historical data, not guarantees.", 14, 283);
+
+      doc.save("BizMind_AI_Business_Report.pdf");
+      setStatus("PDF report downloaded.", "success");
+    } catch (error) {
+      setStatus("Could not create PDF: " + error.message, "error");
+    }
+  }
+
+  function clearAllData() {
+    setProductRows([]);
+    setSalesRows([]);
+    $("expensesInput").value = "";
+    $("excelInput").value = "";
+    $("uploadStatus").textContent = "Choose a workbook to load its rows into the product editor.";
+    $("uploadStatus").style.color = "";
+    latestAnalysis = null;
+    $("pdfBtn").disabled = true;
+    ["financialSnapshot", "products", "sales-intelligence", "reports"].forEach(id => $(id).classList.add("hide"));
+    document.querySelectorAll('.nav-link[href="#products"], .nav-link[href="#sales-intelligence"], .nav-link[href="#reports"]').forEach(link => { link.classList.add("disabled"); link.setAttribute("aria-disabled", "true"); });
+    Object.keys(chartInstances).forEach(destroyChart);
+    $("productTable").innerHTML = '<tr><td colspan="5" class="empty-state">Enter business data above to see product details.</td></tr>';
+    $("growthTable").innerHTML = '<tr><td colspan="3" class="empty-state">Monthly growth will appear after analysis.</td></tr>';
+    $("recommendations").innerHTML = '<div class="empty-state">Recommendations will appear after you submit business data.</div>';
+    $("trendBadge").textContent = "Not analysed";
+    $("trendBadge").className = "trend-badge stable";
+    $("forecastValue").textContent = "—";
+    $("bestMethod").textContent = "—";
+    $("bestError").textContent = "—";
+    $("analysisStatus").textContent = "No analysis yet";
+    $("analysisStatus").className = "status";
+    setStatus("All fields cleared. Enter your business data to begin.");
+    document.getElementById("data-input").scrollIntoView({ behavior: "smooth" });
+  }
+
+  // UI events
+  $("analyzeBtn").addEventListener("click", runAnalysis);
+  $("pdfBtn").addEventListener("click", downloadPDF);
+  $("resetBtn").addEventListener("click", clearAllData);
+  $("addProductBtn").addEventListener("click", () => addProductRow());
+  $("productRows").addEventListener("input", updateProductCount);
+  $("addMonthBtn").addEventListener("click", () => addSalesRow());
+  $("salesRows").addEventListener("input", updateMonthCount);
+  $("excelInput").addEventListener("change", e => importExcel(e.target.files[0]));
+
+  // Highlight active sidebar section while navigating
+  const navLinks = [...document.querySelectorAll(".nav-link")];
+  const sections = navLinks.map(link => document.querySelector(link.getAttribute("href"))).filter(Boolean);
+  if ("IntersectionObserver" in window) {
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          navLinks.forEach(link => link.classList.toggle("active", link.getAttribute("href") === "#" + entry.target.id));
+        }
+      });
+    }, { rootMargin: "-25% 0px -65% 0px" });
+    sections.forEach(section => observer.observe(section));
+  }
+
+  // Start with one blank product-entry row and no prefilled business data.
+  setProductRows([]);
+  setSalesRows([]);
+  $("pdfBtn").disabled = true;
+  setStatus("Enter your business data to begin.");
+})();
+</script>
+</body>
+</html>
